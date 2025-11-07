@@ -56,6 +56,14 @@ namespace WpfApplication1 {
       DataContext = this;
     }
 
+    private void ShowGrade_Checked(object sender, RoutedEventArgs e) {
+        tbExam.Visibility = Visibility.Visible;      
+    }
+
+    private void ShowGrade_Unchecked(object sender, RoutedEventArgs e) {
+        tbExam.Visibility = Visibility.Collapsed;     
+    }
+
     private void SaveExam_Click(object sender, RoutedEventArgs e) {
       _exam = txtExam.Text;
       SaveExamClicked?.Invoke(this, EventArgs.Empty);
