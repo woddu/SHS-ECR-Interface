@@ -59,8 +59,10 @@ namespace WpfApplication1 {
     public void SetPerformancePercentage(string percentage) => tbPerformanceTasks.Text = "Performance Tasks : " + percentage;
     public void SetExamPercentage(string percentage) => tbExam.Text = "Exam : " + percentage;
 
-    private void SaveExam_Click(object sender, System.Windows.RoutedEventArgs e) =>
+    private void SaveExam_Click(object sender, System.Windows.RoutedEventArgs e) {
+      _exam = txtExam.Text;
       SaveExamClicked?.Invoke(this, EventArgs.Empty);
+    }
     
 
     private void SaveWrittenWorks_Click(object sender, System.Windows.RoutedEventArgs e) {
