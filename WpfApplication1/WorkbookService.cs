@@ -519,13 +519,30 @@ public class WorkbookService : IDisposable {
     WorksheetPart wsPart = (WorksheetPart)wbPart.GetPartById(sheet.Id);
     SheetData sheetData = wsPart.Worksheet.GetFirstChild<SheetData>();
 
+
+    Cell cell;
+    string val;
+
+    foreach (Row row in sheetData.Elements<Row>()) {
+      // Build the cell reference for column A
+      string cellRef = $"A{row.RowIndex}";
+      cell = row.Elements<Cell>()
+                     .FirstOrDefault(c => c.CellReference == cellRef);
+
+      val = GetCellValue(doc, cell);
+
+      if (string.Equals(val.Trim(), "male", StringComparison.OrdinalIgnoreCase)) {
+        _maleScoresStartRow = (uint)row.RowIndex + 1u;
+      } else if (string.Equals(val.Trim(), "female", StringComparison.OrdinalIgnoreCase)) {
+        _femaleScoresStartRow = (uint)row.RowIndex + 1u;
+      }
+    }
+
     int startIdx, endIdx;
     string[,] Cols = {
                 { "F", "O" },
                 { "S", "AB" }
             };
-    Cell cell;
-    string val;
 
     for (int i = 0; i < 2; i++) {
       startIdx = ColNameToNumber(Cols[i, 0]);
@@ -705,7 +722,13 @@ public class WorkbookService : IDisposable {
       if (sheet == null) return;
       WorksheetPart wsPart = (WorksheetPart)wbPart.GetPartById(sheet.Id);
       SheetData sheetData = wsPart.Worksheet.GetFirstChild<SheetData>();
-      InsertCellValue(sheetData, cellRef, newValue);
+
+      Cell cell = sheetData.Descendants<Cell>()
+                             .FirstOrDefault(c => c.CellReference == cellRef);     
+      
+      cell.CellValue = new CellValue(newValue);
+      cell.DataType = new EnumValue<CellValues>(CellValues.Number);
+
       // Force recalculation if needed
       var calcProps = wbPart.Workbook.CalculationProperties;
       if (calcProps == null) {
