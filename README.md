@@ -1,7 +1,7 @@
 
 ## SHS ECR Interface
 
-A Windows application that simplifies editing SHS(Senior High School) ECR(Electornic Classroom Record) Excel files, such as adding/editing students, updating student scores, and presenting score.
+A Windows application that simplifies editing Senior High School (SHS) Electronic Classroom Record (ECR) Excel files, including tasks such as adding or editing students, updating student scores, and presenting scores.
 
 ### Developed With
 
