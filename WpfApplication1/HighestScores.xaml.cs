@@ -11,9 +11,6 @@ namespace WpfApplication1 {
   /// Interaction logic for HighestScores.xaml
   /// </summary>
   public partial class HighestScores : UserControl {
-
-
-
     public ObservableCollection<string> WrittenWorks { get; set; } = new ObservableCollection<string>();
 
     public ObservableCollection<string> PerformanceTasks { get; set; } = new ObservableCollection<string>();
@@ -27,7 +24,6 @@ namespace WpfApplication1 {
         btnExamItem.IsEnabled = int.TryParse(_exam, out int _out) && _out > 0;
       }
     }
-
 
     public EventHandler SaveExamClicked;
     public EventHandler SaveWrittenWorksClicked;

@@ -1,4 +1,5 @@
 ﻿using DocumentFormat.OpenXml;
+using DocumentFormat.OpenXml.Office2016.Excel;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
 using System;
@@ -105,25 +106,93 @@ public class WorkbookService : IDisposable {
   public double[] WeightedScores { get; set; } = { weightedScores[0, 0], weightedScores[0, 1], weightedScores[0, 2] };
   public bool HasFileLoaded => !string.IsNullOrWhiteSpace(FilePath);
 
+  private string[] _sharedStrings;
+
   public bool IsFileECR() {
     using (var doc = SpreadsheetDocument.Open(FilePath, false)) {
-      var wbPart = doc.WorkbookPart;
-      var sheetNames = wbPart.Workbook.Sheets
-          .OfType<Sheet>()
-          .Select(s => s.Name)
-          .ToList();
+      if (doc.WorkbookPart?.Workbook.Sheets is not Sheets sheets)
+                return false;
 
-      MissingSheets = string.Join(
-          ", ",
-          requiredSheetNames
-          .Where(req => !sheetNames.Contains(req))
-          .ToList()
-      );
+      var sheetNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+      foreach (Sheet s in sheets)
+        sheetNames.Add(s.Name);
+
+      // Cache shared strings (fast lookup)
+      var sst = doc.WorkbookPart.SharedStringTablePart?.SharedStringTable;
+      _sharedStrings = sst != null
+          ? sst.Elements<SharedStringItem>().Select(i => i.InnerText).ToArray()
+          : Array.Empty<string>();
+
+      // Compute missing sheets
+      MissingSheets = string.Join(", ",
+          requiredSheetNames.Where(req => !sheetNames.Contains(req)));
+
+      var sheet = doc.WorkbookPart?.Workbook.Sheets!
+      .OfType<Sheet>()
+      .First(s => s.Name == requiredSheetNames[1]);
+
+      if (sheet == null)
+        return false;
+
+      WorksheetPart wsPart1 = (WorksheetPart)doc.WorkbookPart?.GetPartById(sheet.Id!);
+
+      ScanSheetForBounds(doc, wsPart1, out _maleScoresStartRow, out _femaleScoresStartRow);
+      
+      sheet = doc.WorkbookPart?.Workbook.Sheets!
+      .OfType<Sheet>()
+      .First(s => s.Name == requiredSheetNames[0]);
+
+      if (sheet == null)
+        return false;
+
+      WorksheetPart wsPart2 = (WorksheetPart)doc.WorkbookPart?.GetPartById(sheet.Id!);
+
+      ScanSheetForBounds(doc, wsPart2, out _maleScoresStartRow, out _femaleScoresStartRow);
 
       // Check if all required sheets are present
       return requiredSheetNames.All(req => sheetNames.Contains(req));
     }
   }
+
+
+  private void ScanSheetForBounds(
+    SpreadsheetDocument doc,
+    WorksheetPart wsPart,
+    out uint maleStart,
+    out uint femaleStart) {
+
+    maleStart = 0;
+    femaleStart = 0;
+
+    using var reader = OpenXmlReader.Create(wsPart);
+
+    while (reader.Read()) {
+      if (reader.ElementType == typeof(Row)) {
+        var row = (Row)reader.LoadCurrentElement();
+        uint rowIndex = row.RowIndex;
+
+        // Only look at column A
+        var cell = row.Elements<Cell>()
+                      .FirstOrDefault(c => c.CellReference?.Value.StartsWith("A") == true);
+
+        if (cell == null)
+          continue;
+
+        string val = GetCellValue(doc,cell).Trim();
+
+        if (val.Equals("male", StringComparison.OrdinalIgnoreCase))
+          maleStart = rowIndex + 1;
+
+        else if (val.Equals("female", StringComparison.OrdinalIgnoreCase)) {
+          femaleStart = rowIndex + 1;
+          return;
+        }
+      }
+    }
+
+    return;
+  }
+
 
   private static int GetTransmutedGrade(double initialGrade, List<GradeRange> table) {
     var match = table.FirstOrDefault(r => initialGrade >= r.Min && initialGrade <= r.Max);
